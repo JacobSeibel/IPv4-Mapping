@@ -1,8 +1,12 @@
-from flask import Flask
+from flask import Flask, request
 from flask_restful import Api, Resource, reqparse
+from shapely.geometry import Point
+from shapely.geometry.polygon import Polygon
+from decimal import Decimal
 import csv
 import pandas as pd
-import numpy as np
+# import numpy as np
+import json
 
 app = Flask(__name__)
 api = Api(app)
@@ -60,8 +64,18 @@ for ipCount in ipCountsDF.items():
 # ipGeos = pd.merge(pd.DataFrame(ipLocations), dfIPBlocks, on='geoname_id', how='outer')
 # ipGeos = ipGeos.replace({np.nan: None})
 
-@app.route("/ipCounts/")
+@app.route("/ipCounts")
 def getIPCounts():
-    return {"result": ipCounts}, 200
+    result = ipCounts
+    if "bounds" in request.args:
+        bounds = json.loads(request.args["bounds"])
+        polygon = Polygon(bounds)
+        boundedIpCounts = []
+        for ipCount in ipCounts:
+            if polygon.contains(Point(Decimal(ipCount['longitude']), Decimal(ipCount['latitude']))):
+                print(ipCount)
+                boundedIpCounts.append(ipCount)
+        result = boundedIpCounts
+    return {"result": result}, 200
 
 app.run(debug=True)
