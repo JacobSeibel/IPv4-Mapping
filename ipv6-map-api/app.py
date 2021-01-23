@@ -41,10 +41,10 @@ def getIPCounts():
     if "bounds" in request.args:
         bounds = json.loads(request.args["bounds"])
         polygon = Polygon(bounds)
+        print(polygon)
         boundedIpCounts = []
         for ipCount in ipCounts:
-            if polygon.contains(Point(Decimal(ipCount['longitude']), Decimal(ipCount['latitude']))):
-                print(ipCount)
+            if polygon.contains(Point(Decimal(ipCount['latitude']), Decimal(ipCount['longitude']))):
                 boundedIpCounts.append(ipCount)
         result = boundedIpCounts
     return {"result": result}, 200
