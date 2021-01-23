@@ -1,5 +1,6 @@
 from flask import Flask, request
 from flask_restful import Api
+from flask_cors import CORS, cross_origin
 from shapely.geometry import Point
 from shapely.geometry.polygon import Polygon
 from decimal import Decimal
@@ -8,6 +9,7 @@ import pandas as pd
 import json
 
 app = Flask(__name__)
+cors = CORS(app)
 api = Api(app)
 
 ipLocations = []
@@ -33,6 +35,7 @@ for ipCount in ipCountsDF.items():
         })
 
 @app.route("/ipCounts")
+@cross_origin()
 def getIPCounts():
     result = ipCounts
     if "bounds" in request.args:
