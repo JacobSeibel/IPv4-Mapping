@@ -15,7 +15,7 @@ from cachetools import cached, TTLCache
 import hashlib
 
 app = Flask(__name__)
-cache = TTLCache(maxsize=1024, ttl=10)
+cache = TTLCache(maxsize=1024, ttl=600)
 cors = CORS(app)
 api = Api(app)
 
