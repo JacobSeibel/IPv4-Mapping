@@ -20,17 +20,31 @@ api = Api(app)
 DATA_FILE = "data/GeoLite2-City-Blocks-IPv4.csv"
 BIN_FILE = "data/ipCounts.bin"
 
+def readDataFile():
+    try:
+       return open(DATA_FILE, 'rb').read()
+    except IOError:
+        print("Couldn't find the data file! Please provide this file: " + DATA_FILE)
+        return {}
+
 fileHash = hashlib.md5()
-fileHash.update(open(DATA_FILE, 'rb').read())
+readBuf = readDataFile()
+if readBuf:
+    fileHash.update(readBuf)
 cachedIpCounts = []
 
 @cached(cache)
-def read_data():
+def readData():
     global fileHash
     global cachedIpCounts
+    noData = False
 
     newHash = hashlib.md5()
-    newHash.update(open(DATA_FILE, 'rb').read())
+    readBuf = readDataFile()
+    if readBuf:
+        newHash.update(readBuf)
+    else:
+        noData = True
     createNew = fileHash.digest() != newHash.digest()
     fileHash = newHash
     if not createNew and cachedIpCounts != []:
@@ -43,9 +57,12 @@ def read_data():
             ipCountsProto.ParseFromString(f.read())
             f.close()
             createNew |= False
+            print("Found a protocol buffer. Using that for the data!")
         except IOError:
-            print("Could not open " + BIN_FILE + ". Creating a new one.")
+            print("Could not open " + BIN_FILE + ". Creating a new one from data.")
             createNew = True
+            if noData:
+                print("...If I had any!! Please provide " + DATA_FILE)
 
     if createNew:
         print("Creating new protocol buffer")
@@ -81,7 +98,7 @@ def isInsideBounds(minLat, maxLat, minLng, maxLng, ipCount):
 @app.route("/ipCounts")
 @cross_origin()
 def getIPCounts():
-    ipCounts = read_data()
+    ipCounts = readData()
     result = ipCounts
     if "bounds" in request.args:
         bounds = json.loads(request.args["bounds"])
