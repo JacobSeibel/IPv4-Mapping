@@ -37,8 +37,6 @@ def read_data():
     fileHash = newHash
     if not createNew and cachedIpCountsDict != {}:
         return cachedIpCountsDict
-    else:
-        print(createNew)
 
     ipCounts = ipv6_map_api.ipCount_pb2.IPCounts()
     if not createNew:
