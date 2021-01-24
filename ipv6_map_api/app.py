@@ -24,25 +24,25 @@ BIN_FILE = "data/ipCounts.bin"
 
 fileHash = hashlib.md5()
 fileHash.update(open(DATA_FILE, 'rb').read())
-cachedIpCountsDict = {}
+cachedIpCounts = []
 
 @cached(cache)
 def read_data():
     global fileHash
-    global cachedIpCountsDict
+    global cachedIpCounts
 
     newHash = hashlib.md5()
     newHash.update(open(DATA_FILE, 'rb').read())
     createNew = fileHash.digest() != newHash.digest()
     fileHash = newHash
-    if not createNew and cachedIpCountsDict != {}:
-        return cachedIpCountsDict
+    if not createNew and cachedIpCounts != []:
+        return cachedIpCounts
 
-    ipCounts = ipv6_map_api.ipCount_pb2.IPCounts()
+    ipCountsProto = ipv6_map_api.ipCount_pb2.IPCounts()
     if not createNew:
         try:
             f = open(BIN_FILE, "rb")
-            ipCounts.ParseFromString(f.read())
+            ipCountsProto.ParseFromString(f.read())
             f.close()
             createNew |= False
         except IOError:
@@ -64,30 +64,29 @@ def read_data():
         ipCountsDF = pd.DataFrame(ipBlocks).pivot_table(index=['latitude', 'longitude'], aggfunc='size')
         for ipCount in ipCountsDF.items():
             if ipCount[0][0] != '' and ipCount[0][1] != '':
-                newCount = ipCounts.ipCounts.add()
+                newCount = ipCountsProto.ipCounts.add()
                 newCount.latitude = float(ipCount[0][0])
                 newCount.longitude = float(ipCount[0][1])
                 newCount.count = ipCount[1]
         f = open(BIN_FILE, "wb")
-        f.write(ipCounts.SerializeToString())
+        f.write(ipCountsProto.SerializeToString())
         f.close()
     
-    cachedIpCountsDict = protobuf_to_dict.protobuf_to_dict(ipCounts, including_default_value_fields=True)['ipCounts']
-    return cachedIpCountsDict
+    cachedIpCounts = protobuf_to_dict.protobuf_to_dict(ipCountsProto, including_default_value_fields=True)['ipCounts']
+    return cachedIpCounts
+
+def isInsideBounds(polygon, ipCount):
+    return polygon.contains(Point(float(ipCount['latitude']), float(ipCount['longitude'])))
 
 @app.route("/ipCounts")
 @cross_origin()
 def getIPCounts():
-    ipCountsDict = read_data()
-    result = ipCountsDict
+    ipCounts = read_data()
+    result = ipCounts
     if "bounds" in request.args:
         bounds = json.loads(request.args["bounds"])
         polygon = Polygon(bounds)
-        boundedIpCounts = []
-        for ipCount in ipCountsDict:
-            if polygon.contains(Point(float(ipCount['latitude']), float(ipCount['longitude']))):
-                boundedIpCounts.append(ipCount)
-        result = boundedIpCounts
+        result = [ipCount for ipCount in ipCounts if isInsideBounds(polygon, ipCount)]
     return {"result": result}, 200
 
 app.run(debug=True)
