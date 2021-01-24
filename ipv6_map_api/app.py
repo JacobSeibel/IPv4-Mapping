@@ -19,12 +19,12 @@ ipBlocks = []
 
 ipCounts = ipv6_map_api.ipCount_pb2.IPCounts()
 try:
-    f = open("ipCounts.bin", "rb")
+    f = open("data/ipCounts.bin", "rb")
     ipCounts.ParseFromString(f.read())
     f.close()
     createNew = False
 except IOError:
-    print("Could not open ipCounts.bin. Creating a new one.")
+    print("Could not open data/ipCounts.bin. Creating a new one.")
     createNew = True
 
 if createNew:
@@ -44,7 +44,7 @@ if createNew:
             newCount.latitude = float(ipCount[0][0])
             newCount.longitude = float(ipCount[0][1])
             newCount.count = ipCount[1]
-    f = open("ipCounts.bin", "wb")
+    f = open("data/ipCounts.bin", "wb")
     f.write(ipCounts.SerializeToString())
     f.close()
 
