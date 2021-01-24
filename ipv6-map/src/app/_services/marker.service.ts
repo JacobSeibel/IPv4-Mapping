@@ -30,17 +30,20 @@ export class MarkerService {
       this.http.get("http://localhost:5000/ipCounts", {observe: 'response', responseType: 'json', params}).subscribe((res: any) => {
         const result = res.body.result;
         // Find the maximum density (represented by log(log(count))) in the set
-        const maxDensity = Math.max.apply(Math, result.map((ipCount: any) => { return Math.log(Math.log(ipCount.count+1)+1) }));
+        const maxDensity = Math.log(Math.log(Math.max.apply(Math, result.map((ipCount: any) => { return ipCount.count; })) + 1) + 1);
         const markers = result.map((ipCount: any) => { 
           // Each point's intensity is defined as maxDensity - density of this point over the maxDensity
-          const density = Math.log(Math.log(ipCount.count+1)+1)
-          return [ipCount.latitude, ipCount.longitude, (maxDensity - density) / maxDensity] 
+          const density = Math.log(Math.log(ipCount.count+1)+1);
+          let normalized = (maxDensity - density) / maxDensity;
+          return [ipCount.latitude, ipCount.longitude, normalized] 
         })
         if(this.heat){
           map.removeLayer(this.heat);
         }
+        let radius = 8 * map.getZoom();
+        radius = radius > 100 ? 100 : radius;
         // TODO: Figure out why 'as any' is needed
-        this.heat = (L as any).heatLayer(markers, {gradient: {0.3: 'blue', 0.5: 'lime', .75: 'yellow', 1: 'red'}}).addTo(map);
+        this.heat = (L as any).heatLayer(markers, {gradient: {0.3: 'blue', 0.35: 'lime', 0.4: 'yellow', 0.5: 'red'}, radius}).addTo(map);
         this.inUse = false;
         if(this.waiting) {
           this.waiting = false;

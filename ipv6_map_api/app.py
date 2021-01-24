@@ -2,8 +2,6 @@ import os
 from flask import Flask, request
 from flask_restful import Api
 from flask_cors import CORS, cross_origin
-from shapely.geometry import Point
-from shapely.geometry.polygon import Polygon
 import csv
 import pandas as pd
 import json
@@ -75,8 +73,10 @@ def read_data():
     cachedIpCounts = protobuf_to_dict.protobuf_to_dict(ipCountsProto, including_default_value_fields=True)['ipCounts']
     return cachedIpCounts
 
-def isInsideBounds(polygon, ipCount):
-    return polygon.contains(Point(float(ipCount['latitude']), float(ipCount['longitude'])))
+def isInsideBounds(minLat, maxLat, minLng, maxLng, ipCount):
+    lat = ipCount['latitude']
+    lng = ipCount ['longitude']
+    return lat > minLat and lat < maxLat and lng > minLng and lng < maxLng
 
 @app.route("/ipCounts")
 @cross_origin()
@@ -85,8 +85,18 @@ def getIPCounts():
     result = ipCounts
     if "bounds" in request.args:
         bounds = json.loads(request.args["bounds"])
-        polygon = Polygon(bounds)
-        result = [ipCount for ipCount in ipCounts if isInsideBounds(polygon, ipCount)]
+        if len(bounds) != 4:
+            return {"errorMessage": "Must provide four corners of bounding box."}, 400
+        minLat = bounds[0][0]
+        maxLat = bounds[0][0]
+        minLng = bounds[0][1]
+        maxLng = bounds[0][1]
+        for bound in bounds:
+            if bound[0] < minLat: minLat = bound[0]
+            if bound[0] > maxLat: maxLat = bound[0]
+            if bound[1] < minLng: minLng = bound[1]
+            if bound[1] > maxLng: maxLng = bound[1]
+        result = [ipCount for ipCount in ipCounts if isInsideBounds(minLat, maxLat, minLng, maxLng, ipCount)]
     return {"result": result}, 200
 
 app.run(debug=True)
